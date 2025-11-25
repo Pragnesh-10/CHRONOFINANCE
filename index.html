@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChronoFinance</title>
+    
+    <!-- Tailwind CSS for Styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Custom Config for Brand Colors -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            850: '#151f32',
+                            950: '#020617',
+                        },
+                        cyan: {
+                            450: '#00d0ff',
+                        }
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-out',
+                        'slide-in': 'slideIn 0.3s ease-out',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        slideIn: {
+                            '0%': { transform: 'translateX(100%)' },
+                            '100%': { transform: 'translateX(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #22d3ee; 
+        }
+        
+        .glow-text {
+            text-shadow: 0 0 10px rgba(34, 211, 238, 0.5);
+        }
+        .glow-box {
+            box-shadow: 0 0 15px rgba(34, 211, 238, 0.2);
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(34, 211, 238, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-200 font-sans min-h-screen selection:bg-cyan-500 selection:text-black overflow-x-hidden">
+
+    <!-- App Container -->
+    <div id="app" class="relative min-h-screen flex flex-col">
+        <!-- Content injected by JS -->
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- State Management ---
+        const state = {
+            user: null, // { name, email }
+            currentView: 'login', // login, roles, investor-list, investor-detail, payment, landowner-form, contractor-list, contractor-detail
+            showProfile: false,
+            selectedProject: null,
+            selectedLand: null,
+            landOwnerSubmitted: false
+        };
+
+        // --- Mock Data ---
+        const PROJECTS = [
+            {
+                id: 1,
+                name: "Skyline Heights",
+                company: "Apex Constructors",
+                location: "Mumbai, Maharashtra",
+                budget: "₹500 Cr",
+                timeline: "36 Months",
+                completionDate: "Dec 2028",
+                description: "A luxury high-rise residential complex consisting of 4 towers with state-of-the-art amenities including a sky deck.",
+                futureProspects: "Expected 12% ROI per annum based on rapid urbanization and metro connectivity.",
+                image: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&q=80&w=400"
+            },
+            {
+                id: 2,
+                name: "Green Valley Tech Park",
+                company: "EcoBuild Pvt Ltd",
+                location: "Bangalore, Karnataka",
+                budget: "₹120 Cr",
+                timeline: "18 Months",
+                completionDate: "June 2026",
+                description: "Sustainable IT park with LEEDS Platinum certification, solar integration, and rainwater harvesting.",
+                futureProspects: "High rental yield expected from MNC tenants looking for green office spaces.",
+                image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=400"
+            },
+            {
+                id: 3,
+                name: "Oceanic Trade Center",
+                company: "BlueChip Infra",
+                location: "Visakhapatnam, AP",
+                budget: "₹350 Cr",
+                timeline: "24 Months",
+                completionDate: "Aug 2027",
+                description: "A commercial hub facing the coast, designed for import-export businesses and logistics firms.",
+                futureProspects: "Strategic location near the port ensures steady commercial value appreciation.",
+                image: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=400"
+            }
+        ];
+
+        const LAND_HOLDINGS = [
+            {
+                id: 101,
+                ownerName: "Rajesh Kumar",
+                location: "Amaravati, Andhra Pradesh",
+                area: "5 Acres",
+                type: "Agricultural (Convertible)",
+                description: "Prime land near the new highway expansion. Clear titles, single owner. Ideal for residential layout.",
+                image: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&q=80&w=400"
+            },
+            {
+                id: 102,
+                ownerName: "Sita Devi",
+                location: "Hyderabad, Telangana",
+                area: "12,000 Sq Ft",
+                type: "Commercial Plot",
+                description: "Corner plot in Hitech City suitable for a shopping complex or office building. Soil tested.",
+                image: "https://images.unsplash.com/photo-1444858291040-58f756a3bdd6?auto=format&fit=crop&q=80&w=400"
+            }
+        ];
+
+        // --- Core Functions ---
+
+        function render() {
+            const app = document.getElementById('app');
+            app.innerHTML = ''; // Clear current content
+
+            // If logged in, show Navbar
+            if (state.user) {
+                app.appendChild(createNavbar());
+            }
+
+            // Main Content Area
+            const main = document.createElement('main');
+            main.className = 'flex-grow container mx-auto p-4';
+            
+            // Route Logic
+            if (!state.user) {
+                main.appendChild(createLoginScreen());
+            } else {
+                switch (state.currentView) {
+                    case 'roles':
+                        main.appendChild(createRoleSelection());
+                        break;
+                    case 'investor-list':
+                        main.appendChild(createInvestorList());
+                        break;
+                    case 'investor-detail':
+                        main.appendChild(createInvestorDetail());
+                        break;
+                    case 'payment':
+                        main.appendChild(createPaymentPortal());
+                        break;
+                    case 'landowner-form':
+                        if(state.landOwnerSubmitted) main.appendChild(createSuccessScreen("Land Details Submitted", "Construction companies will review your portfolio."));
+                        else main.appendChild(createLandOwnerForm());
+                        break;
+                    case 'contractor-list':
+                        main.appendChild(createContractorList());
+                        break;
+                    case 'contractor-detail':
+                        main.appendChild(createContractorDetail());
+                        break;
+                    default:
+                        main.appendChild(createRoleSelection());
+                }
+            }
+            app.appendChild(main);
+
+            // Profile Modal Overlay
+            if (state.showProfile && state.user) {
+                app.appendChild(createProfileModal());
+            }
+        }
+
+        function navigate(view) {
+            state.currentView = view;
+            render();
+        }
+
+        function login(user) {
+            state.user = user;
+            state.currentView = 'roles';
+            render();
+        }
+
+        function logout() {
+            state.user = null;
+            state.showProfile = false;
+            state.currentView = 'login';
+            state.selectedProject = null;
+            state.selectedLand = null;
+            state.landOwnerSubmitted = false;
+            render();
+        }
+
+        // --- Components (View Creators) ---
+
+        function createNavbar() {
+            const nav = document.createElement('nav');
+            nav.className = 'w-full bg-slate-900 border-b border-cyan-900/50 p-4 flex justify-between items-center sticky top-0 z-40 glow-box';
+            nav.innerHTML = `
+                <div class="flex items-center gap-3 cursor-pointer" onclick="navigate('roles')">
+                    <div class="w-10 h-10 rounded-full border-2 border-cyan-400 flex items-center justify-center shadow-[0_0_10px_#22d3ee]">
+                        <span class="text-cyan-400 font-bold text-xl">C</span>
+                    </div>
+                    <h1 class="text-xl md:text-2xl font-bold tracking-widest text-white">
+                        CHRONO<span class="text-cyan-400">FINANCE</span>
+                    </h1>
+                </div>
+                <button onclick="state.showProfile = true; render()" class="flex items-center gap-2 text-slate-300 hover:text-cyan-400 transition">
+                    <span class="hidden md:block font-medium">${state.user.name}</span>
+                    <div class="bg-slate-800 w-10 h-10 rounded-full border border-cyan-900 flex items-center justify-center hover:bg-slate-700 transition">
+                        <i class="fas fa-user"></i>
+                    </div>
+                </button>
+            `;
+            return nav;
+        }
+
+        function createLoginScreen() {
+            const container = document.createElement('div');
+            container.className = 'flex flex-col items-center justify-center min-h-[90vh] relative';
+            
+            // Background Glow
+            const bgGlow = document.createElement('div');
+            bgGlow.className = 'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-cyan-500/20 blur-[100px] rounded-full pointer-events-none';
+            container.appendChild(bgGlow);
+
+            const card = document.createElement('div');
+            card.className = 'glass-panel p-8 rounded-2xl w-full max-w-md animate-fade-in z-10';
+            card.innerHTML = `
+                <div class="flex justify-center mb-6">
+                    <div class="w-20 h-20 rounded-full border-4 border-cyan-400 flex items-center justify-center glow-box">
+                        <span class="text-cyan-400 font-bold text-4xl">C</span>
+                    </div>
+                </div>
+                <h2 class="text-3xl font-bold text-center text-white mb-2">Welcome</h2>
+                <p class="text-center text-slate-400 mb-8">Access the future of Real Estate Finance</p>
+                
+                <form id="loginForm" class="space-y-4">
+                    <div>
+                        <label class="block text-slate-400 mb-1 text-sm">Email Address</label>
+                        <input type="email" id="emailInput" required 
+                            class="w-full bg-slate-800 border border-slate-700 text-white p-3 rounded-lg focus:outline-none focus:border-cyan-400 transition"
+                            placeholder="user@example.com">
+                    </div>
+                    <button type="submit" class="w-full bg-cyan-500 hover:bg-cyan-400 text-black font-bold p-3 rounded-lg transition glow-box mt-2">
+                        Login with Email
+                    </button>
+                </form>
+
+                <div class="flex items-center my-6">
+                    <div class="flex-grow h-px bg-slate-700"></div>
+                    <span class="px-4 text-slate-500 text-sm">OR</span>
+                    <div class="flex-grow h-px bg-slate-700"></div>
+                </div>
+
+                <button onclick="login({name: 'Google User', email: 'user@gmail.com'})" class="w-full bg-white hover:bg-gray-100 text-gray-900 font-medium p-3 rounded-lg flex items-center justify-center gap-2 transition">
+                    <i class="fab fa-google text-red-500"></i> Continue with Google
+                </button>
+            `;
+
+            // Handle Form Submit
+            const form = card.querySelector('#loginForm');
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const email = document.getElementById('emailInput').value;
+                login({ name: email.split('@')[0], email: email });
+            });
+
+            container.appendChild(card);
+            return container;
+        }
+
+        function createRoleSelection() {
+            const container = document.createElement('div');
+            container.className = 'flex flex-col items-center justify-center min-h-[80vh] animate-fade-in';
+            container.innerHTML = `
+                <h2 class="text-3xl md:text-4xl text-white font-bold mb-12 text-center glow-text">Select Your Role</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-6xl px-4">
+                    
+                    <!-- Investor -->
+                    <button onclick="navigate('investor-list')" class="group glass-panel p-8 rounded-2xl transition-all duration-300 hover:bg-slate-800 hover:border-cyan-400 hover:-translate-y-2 flex flex-col items-center text-center">
+                        <div class="w-24 h-24 bg-slate-800 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition border border-slate-700 group-hover:border-cyan-400 shadow-lg">
+                            <i class="fas fa-sack-dollar text-cyan-400 text-4xl"></i>
+                        </div>
+                        <h3 class="text-2xl text-white font-bold mb-2 group-hover:text-cyan-400">Investor</h3>
+                        <p class="text-slate-400 text-sm">Browse high-yield projects and grow your wealth with secure investments.</p>
+                    </button>
+
+                    <!-- Contractor -->
+                    <button onclick="navigate('contractor-list')" class="group glass-panel p-8 rounded-2xl transition-all duration-300 hover:bg-slate-800 hover:border-cyan-400 hover:-translate-y-2 flex flex-col items-center text-center">
+                        <div class="w-24 h-24 bg-slate-800 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition border border-slate-700 group-hover:border-cyan-400 shadow-lg">
+                            <i class="fas fa-hard-hat text-cyan-400 text-4xl"></i>
+                        </div>
+                        <h3 class="text-2xl text-white font-bold mb-2 group-hover:text-cyan-400">Contractor</h3>
+                        <p class="text-slate-400 text-sm">Find available land holdings and propose construction projects.</p>
+                    </button>
+
+                    <!-- Land Owner -->
+                    <button onclick="navigate('landowner-form')" class="group glass-panel p-8 rounded-2xl transition-all duration-300 hover:bg-slate-800 hover:border-cyan-400 hover:-translate-y-2 flex flex-col items-center text-center">
+                        <div class="w-24 h-24 bg-slate-800 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition border border-slate-700 group-hover:border-cyan-400 shadow-lg">
+                            <i class="fas fa-map-location-dot text-cyan-400 text-4xl"></i>
+                        </div>
+                        <h3 class="text-2xl text-white font-bold mb-2 group-hover:text-cyan-400">Land Owner</h3>
+                        <p class="text-slate-400 text-sm">List your land, partner with developers, and unlock value.</p>
+                    </button>
+
+                </div>
+            `;
+            return container;
+        }
+
+        // --- Investor Views ---
+
+        function createInvestorList() {
+            const container = document.createElement('div');
+            container.className = 'max-w-7xl mx-auto animate-fade-in';
+            
+            let html = `
+                <button onclick="navigate('roles')" class="text-slate-400 hover:text-white flex items-center gap-2 mb-6 transition">
+                    <i class="fas fa-arrow-left"></i> Back to Roles
+                </button>
+                <h2 class="text-3xl text-white font-bold mb-8 border-l-4 border-cyan-500 pl-4">Investment Opportunities</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            `;
+
+            PROJECTS.forEach((proj, index) => {
+                html += `
+                    <div onclick="state.selectedProject = PROJECTS[${index}]; navigate('investor-detail')" 
+                         class="glass-panel rounded-xl overflow-hidden cursor-pointer transition hover:border-cyan-500 group relative">
+                        <div class="h-48 bg-slate-800 relative overflow-hidden">
+                            <img src="${proj.image}" alt="${proj.name}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+                                <span class="bg-cyan-600 text-white text-xs px-2 py-1 rounded font-bold">ROI: High</span>
+                            </div>
+                        </div>
+                        <div class="p-5">
+                            <h3 class="text-xl text-white font-bold mb-1 group-hover:text-cyan-400 transition">${proj.name}</h3>
+                            <div class="flex items-center text-cyan-400 text-sm mb-4">
+                                <i class="fas fa-map-marker-alt mr-2"></i> ${proj.location}
+                            </div>
+                            <div class="grid grid-cols-2 gap-4 text-sm border-t border-slate-700 pt-4 text-slate-400">
+                                <div><p class="text-xs text-slate-500">Budget</p>${proj.budget}</div>
+                                <div class="text-right"><p class="text-xs text-slate-500">Timeline</p>${proj.timeline}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += `</div>`;
+            container.innerHTML = html;
+            return container;
+        }
+
+        function createInvestorDetail() {
+            const proj = state.selectedProject;
+            const container = document.createElement('div');
+            container.className = 'max-w-5xl mx-auto animate-fade-in pb-10';
+            container.innerHTML = `
+                <button onclick="navigate('investor-list')" class="text-slate-400 hover:text-white flex items-center gap-2 mb-6 transition">
+                    <i class="fas fa-arrow-left"></i> Back to List
+                </button>
+                
+                <div class="glass-panel rounded-2xl overflow-hidden">
+                    <!-- Hero Image -->
+                    <div class="h-80 w-full relative">
+                         <img src="${proj.image}" alt="${proj.name}" class="w-full h-full object-cover">
+                         <div class="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent"></div>
+                         <div class="absolute bottom-6 left-6 md:left-10">
+                             <h1 class="text-3xl md:text-5xl text-white font-bold glow-text">${pro
